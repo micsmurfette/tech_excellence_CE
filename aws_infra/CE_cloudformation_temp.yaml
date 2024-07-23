@@ -17,7 +17,7 @@ Resources:
     Properties:
       Tags:
         - Key: Name
-          Value: tech-execellence-IGW
+          Value: tech-excellence-IGW
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -107,19 +107,39 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
    
   PublicSecurityGroup:
-   Type: AWS::EC2::SecurityGroup
-   Properties:
-     GroupDescription: Public security group
-     VpcId: !Ref MyVPC
-     SecurityGroupIngress: 
-       - IpProtocol: tcp # allows all tcp inbound traffic 
-         CidrIp: 0.0.0.0/0
-     SecurityGroupEgress:
-       - IpProtocol: -1 # allows all outbound traffic
-         CidrIp: 0.0.0.0/0
-     Tags:
-       - Key: Name
-         Value: PublicSecurityGroup
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Public security group
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp  # Allows inbound TCP traffic
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp  # Allows inbound UDP traffic
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp  # Allows inbound ICMP traffic
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp  # Allows outbound TCP traffic
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp  # Allows outbound UDP traffic
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp  # Allows outbound ICMP traffic
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: PublicSecurityGroup
 
   PrivateSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -127,10 +147,30 @@ Resources:
       GroupDescription: Private security group
       VpcId: !Ref MyVPC
       SecurityGroupIngress:
-        - IpProtocol: -1 # Allows all inbound traffic from within the VPC
+        - IpProtocol: tcp  # Allows inbound TCP traffic from within the VPC
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 10.0.0.0/16
+        - IpProtocol: udp  # Allows inbound UDP traffic from within the VPC
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 10.0.0.0/16
+        - IpProtocol: icmp  # Allows inbound ICMP traffic from within the VPC
+          FromPort: -1
+          ToPort: -1
           CidrIp: 10.0.0.0/16
       SecurityGroupEgress:
-        - IpProtocol: -1 # Allows all outbound traffic from within the VPC
+        - IpProtocol: tcp  # Allows outbound TCP traffic within the VPC
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 10.0.0.0/16
+        - IpProtocol: udp  # Allows outbound UDP traffic within the VPC
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 10.0.0.0/16
+        - IpProtocol: icmp  # Allows outbound ICMP traffic within the VPC
+          FromPort: -1
+          ToPort: -1
           CidrIp: 10.0.0.0/16
       Tags:
         - Key: Name
