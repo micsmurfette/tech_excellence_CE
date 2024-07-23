@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template to create an EKS cluster with 3 nodes
+
+Resources:
+  EKSClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: MyEKSCluster
+      ResourcesVpcConfig:
+        SubnetIds:
+          - !Ref Subnet1
+          - !Ref Subnet2
+      RoleArn: !GetAtt EKSClusterRole.Arn
+
+  NodeInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+
+  NodeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref NodeInstanceRole
+
+  EKSNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      ClusterName: !Ref EKSCluster
+      NodeRole: !GetAtt NodeInstanceRole.Arn
+      Subnets:
+        - !Ref Subnet1
+        - !Ref Subnet2
+      ScalingConfig:
+        MinSize: 3
+        MaxSize: 3
+        DesiredSize: 3
+      AmiType: AL2_x86_64
+      InstanceTypes:
+        - t3.medium
+      NodegroupName: MyEKSNodeGroup
+
+Parameters:
+  Subnet1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Enter the first subnet ID for your VPC
+  Subnet2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Enter the second subnet ID for your VPC
+  VPCId:
+    Type: AWS::EC2::VPC::Id
+    Description: Enter the ID of your VPC
+
+Outputs:
+  EKSClusterName:
+    Description: EKS Cluster Name
+    Value: !Ref EKSCluster
+
+  EKSNodeGroupName:
+    Description: EKS Node Group Name
+    Value: !Ref EKSNodeGroup
