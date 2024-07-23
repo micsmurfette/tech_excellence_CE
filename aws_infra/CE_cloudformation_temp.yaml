@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template to create a VPC with 2 subnets
+Description: CloudFormation template to create a VPC with 1 public subnet and 1 private subnet
 
 Resources:
   MyVPC:
@@ -10,14 +10,14 @@ Resources:
       EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: MyVPC
+          Value: tech-excellence-VPC
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
-          Value: MyInternetGateway
+          Value: tech-execellence-IGW
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -32,6 +32,14 @@ Resources:
       Tags:
         - Key: Name
           Value: PublicRouteTable
+  
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: PrivateRouteTable
 
   PublicRoute:
     Type: AWS::EC2::Route
@@ -41,7 +49,30 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
 
-  PublicSubnet1:
+  NATGatewayEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    DependsOn: AttachGateway
+    Properties:
+      AllocationId: !GetAtt NATGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: MyNATGateway
+  
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+  PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
@@ -50,40 +81,86 @@ Resources:
       AvailabilityZone: !Select [0, !GetAZs '']
       Tags:
         - Key: Name
-          Value: PublicSubnet1
+          Value: PublicSubnet
 
-  PublicSubnet2:
+  PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
       CidrBlock: 10.0.2.0/24
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: false
       AvailabilityZone: !Select [1, !GetAZs '']
       Tags:
         - Key: Name
-          Value: PublicSubnet2
+          Value: PrivateSubnet
 
   PublicSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PublicSubnet1
+      SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
 
-  PublicSubnet2RouteTableAssociation:
+  PrivateSubnetRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PublicSubnet2
+      SubnetId: !Ref PrivateSubnet
       RouteTableId: !Ref PublicRouteTable
+   
+  PublicSecurityGroup:
+   Type: AWS::EC2::SecurityGroup
+   Properties:
+     GroupDescription: Public security group
+     VpcId: !Ref MyVPC
+     SecurityGroupIngress: 
+       - IpProtocol: tcp # allows all tcp inbound traffic 
+         CidrIp: 0.0.0.0/0
+     SecurityGroupEgress:
+       - IpProtocol: -1 # allows all outbound traffic
+         CidrIp: 0.0.0.0/0
+     Tags:
+       - Key: Name
+         Value: PublicSecurityGroup
+
+  PrivateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Private security group
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: -1 # Allows all inbound traffic from within the VPC
+          CidrIp: 10.0.0.0/16
+      SecurityGroupEgress:
+        - IpProtocol: -1 # Allows all outbound traffic from within the VPC
+          CidrIp: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: PrivateSecurityGroup
 
 Outputs:
   VPCId:
     Description: VPC Id
     Value: !Ref MyVPC
 
-  PublicSubnet1Id:
-    Description: Public Subnet 1 Id
-    Value: !Ref PublicSubnet1
+  PublicSubnetId:
+    Description: Public Subnet Id
+    Value: !Ref PublicSubnet
 
-  PublicSubnet2Id:
-    Description: Public Subnet 2 Id
-    Value: !Ref PublicSubnet2
+  PrivateSubnetId:
+    Description: Private Subnet Id
+    Value: !Ref PrivateSubnet
+
+  PublicSecurityGroupId:
+    Description: Public Security Group Id
+    Value: !Ref PublicSecurityGroup
+
+  PrivateSecurityGroupId:
+    Description: Private Security Group Id
+    Value: !Ref PrivateSecurityGroup
+
+  PublicRouteTableId:
+    Description: Public Route Table Id
+    Value: !Ref PublicRouteTable
+
+  PrivateRouteTableId:
+    Description: Private Route Table Id
+    Value: !Ref PrivateRouteTable
